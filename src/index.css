@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  h1, h2, h3, h4, .font-display {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: theme('colors.gold.100');
+    color: theme('colors.ink.DEFAULT');
+  }
+  *:focus-visible {
+    outline: 2px solid theme('colors.gold.DEFAULT');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* Borde perforado tipo "billete" que separa la ruta del desglose de precio */
+  .ticket-perforation {
+    position: relative;
+    height: 1px;
+  }
+  .ticket-perforation::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, transparent 4px, theme('colors.line') 4.5px);
+    background-size: 14px 100%;
+    background-repeat: repeat-x;
+    background-position: center;
+  }
+  .ticket-notch {
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    background: theme('colors.paper');
+    border-radius: 9999px;
+    transform: translateY(-50%);
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-quote, #print-quote * {
+    visibility: visible;
+  }
+  #print-quote {
+    position: absolute;
+    inset: 0;
+    padding: 24px;
+  }
+}
