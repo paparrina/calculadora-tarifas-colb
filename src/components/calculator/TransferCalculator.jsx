@@ -17,6 +17,7 @@ function emptyTrip(defaultVehicleClassId) {
     origin: null,
     destination: null,
     vehicleClassId: defaultVehicleClassId,
+    serviceRef: '',
     hasExtraHour: false,
     extraHours: 1,
     result: null,

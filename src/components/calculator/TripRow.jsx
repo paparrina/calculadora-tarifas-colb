@@ -29,6 +29,19 @@ export default function TripRow({ trip, index, zones, vehicleClasses, onChange, 
         )}
       </div>
 
+      <div className="mb-3">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          Nº de servicio / colaborador
+        </span>
+        <input
+          type="text"
+          value={trip.serviceRef || ''}
+          onChange={(e) => onChange({ serviceRef: e.target.value })}
+          placeholder="Ej. 4521 · Nombre del colaborador"
+          className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none transition focus:border-gold"
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end">
         <Combobox
           label="Zona de origen"
