@@ -165,6 +165,24 @@ método antiguo (`execCommand`) o, como último recurso, descarga un fichero
 (.txt o .html) con el mismo contenido. El botón indica qué ha ocurrido
 ("Copiado" / "Descargado (.txt)", "Abierto para imprimir" / "Descargado").
 
+**Hora extra en cualquier servicio:** tanto en Traslado (por trayecto) como en
+Disposición por horas hay un checkbox "¿Hubo hora extra?" con un contador. Al
+marcarlo, se añade un cargo `horas × tarifa_hora_extra[clase_vehículo]` como
+una línea más del desglose — usa `getExtraHourRate` y `addExtraHourCharge` de
+`pricing.js`, reutilizando la misma tarifa de hora extra (65/95/85 €) ya
+definida en `disposal_rates`. En Disposición es independiente del cálculo
+automático de horas extra al superar las 12h: sirve para horas extra que se
+facturan aparte del tiempo ya contratado.
+
+**Panel de Gestión protegido con contraseña:** la pestaña "Disposición por
+horas" del panel de administración pide una contraseña (`2026` por defecto,
+editable en `RatesAdmin.jsx` — constante `DISPOSAL_EDIT_PASSWORD`) antes de
+mostrar la tabla editable. Importante: es una protección solo de interfaz,
+no de seguridad real — cualquiera con acceso al código fuente del navegador
+puede ver la contraseña. La seguridad real de escritura la sigue dando la
+política RLS de Supabase (`auth.role() = 'authenticated'`); este candado es
+únicamente para evitar cambios accidentales de alguien sin la contraseña.
+
 ---
 
 ## 6. Lógica de cálculo (resumen)

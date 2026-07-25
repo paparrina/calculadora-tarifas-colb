@@ -34,6 +34,41 @@ function round2(n) {
 }
 
 /**
+ * Busca el precio de "hora extra" para una clase de vehículo en el
+ * mapa de tarifas de disposición (la misma tarifa de hora extra que
+ * ya se usa en Disposición por horas: 65/95/85 € para E/S/V).
+ */
+export function getExtraHourRate(disposalRateMap, vehicleClassId) {
+  return disposalRateMap.get(`${vehicleClassId}:0:true`)
+}
+
+/**
+ * Añade un cargo de "hora(s) extra" a un resultado ya calculado
+ * (de un traslado o de una disposición), como una línea adicional del
+ * desglose — para servicios en los que hubo tiempo de espera u horas
+ * extra que se facturan aparte. No sustituye el cálculo base: se suma
+ * encima, y el IVA se recalcula sobre el nuevo subtotal.
+ *
+ * @param {Object} result          - resultado de calculateZonePrice o calculateDisposalPrice
+ * @param {number} extraHours      - nº de horas extra (0 o vacío = no añade nada)
+ * @param {number} extraHourRate   - precio de una hora extra para la clase de vehículo
+ * @param {number} vatRate
+ */
+export function addExtraHourCharge(result, extraHours, extraHourRate, vatRate) {
+  if (!result?.ok || !extraHours || extraHours <= 0) return result
+  if (extraHourRate === undefined) {
+    return { ok: false, error: 'No existe tarifa de hora extra registrada para esta clase de vehículo.' }
+  }
+  const extraCharge = round2(extraHours * extraHourRate)
+  const priceBase = round2(result.priceBase + extraCharge)
+  const legs = [
+    ...result.legs,
+    { label: `${extraHours} hora(s) extra × ${formatEUR(extraHourRate)}`, price: extraCharge },
+  ]
+  return buildResult({ priceBase, vatRate, mode: result.mode, legs, formula: result.formula })
+}
+
+/**
  * Calcula el precio de un TRASLADO entre dos ZONAS.
  *
  * Modelo de zonas numéricas: la Zona 0 es el Aeropuerto y tiene su

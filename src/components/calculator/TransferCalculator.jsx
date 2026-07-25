@@ -3,7 +3,7 @@ import { Plus, Car } from 'lucide-react'
 import { Button, Spinner } from '../ui/Primitives'
 import TripRow from './TripRow'
 import MultiTripTicket from './MultiTripTicket'
-import { calculateZonePrice, summarizeTrips } from '../../lib/pricing'
+import { calculateZonePrice, summarizeTrips, getExtraHourRate, addExtraHourCharge } from '../../lib/pricing'
 
 let tripCounter = 0
 function newTripId() {
@@ -12,10 +12,18 @@ function newTripId() {
 }
 
 function emptyTrip(defaultVehicleClassId) {
-  return { id: newTripId(), origin: null, destination: null, vehicleClassId: defaultVehicleClassId, result: null }
+  return {
+    id: newTripId(),
+    origin: null,
+    destination: null,
+    vehicleClassId: defaultVehicleClassId,
+    hasExtraHour: false,
+    extraHours: 1,
+    result: null,
+  }
 }
 
-export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap, vatRate }) {
+export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap, disposalRateMap, vatRate }) {
   const defaultVehicleClassId = vehicleClasses[0]?.id ?? null
   const [trips, setTrips] = useState(() => [emptyTrip(defaultVehicleClassId)])
   const [calculating, setCalculating] = useState(false)
@@ -41,16 +49,18 @@ export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap,
     // pulsar calcular, aunque la operación en sí sea instantánea.
     setTimeout(() => {
       setTrips((rows) =>
-        rows.map((t) => ({
-          ...t,
-          result: calculateZonePrice({
+        rows.map((t) => {
+          const base = calculateZonePrice({
             zoneA: t.origin,
             zoneB: t.destination,
             vehicleClassId: t.vehicleClassId,
             rateMap: zoneRateMap,
             vatRate,
-          }),
-        }))
+          })
+          const extraRate = getExtraHourRate(disposalRateMap, t.vehicleClassId)
+          const result = t.hasExtraHour ? addExtraHourCharge(base, t.extraHours, extraRate, vatRate) : base
+          return { ...t, result }
+        })
       )
       setCalculating(false)
     }, 380)

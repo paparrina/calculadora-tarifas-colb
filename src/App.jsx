@@ -52,6 +52,7 @@ export default function App() {
                   zones={data.zones}
                   vehicleClasses={data.vehicleClasses}
                   zoneRateMap={data.zoneRateMap}
+                  disposalRateMap={data.disposalRateMap}
                   vatRate={data.vatRate}
                 />
               ) : (

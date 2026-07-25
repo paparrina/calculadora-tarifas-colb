@@ -1,12 +1,28 @@
 import { useState } from 'react'
-import { ShieldAlert, RefreshCcw } from 'lucide-react'
+import { ShieldAlert, RefreshCcw, Lock } from 'lucide-react'
 import { useAdminRates } from '../../hooks/useAdminRates'
 import { Card, Spinner, Tabs, ZoneBadge } from '../ui/Primitives'
 import EditablePrice from './EditablePrice'
 
+const DISPOSAL_EDIT_PASSWORD = '2026'
+
 export default function RatesAdmin() {
   const { zoneRows, disposalRows, loading, error, reload, updateZonePrice, updateDisposalPrice } = useAdminRates()
   const [table, setTable] = useState('zones')
+  const [disposalUnlocked, setDisposalUnlocked] = useState(false)
+  const [pwInput, setPwInput] = useState('')
+  const [pwError, setPwError] = useState(false)
+
+  function handleUnlock(e) {
+    e.preventDefault()
+    if (pwInput === DISPOSAL_EDIT_PASSWORD) {
+      setDisposalUnlocked(true)
+      setPwError(false)
+      setPwInput('')
+    } else {
+      setPwError(true)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -77,6 +93,38 @@ export default function RatesAdmin() {
               ))}
             </tbody>
           </table>
+        </Card>
+      ) : table === 'disposal' && !disposalUnlocked ? (
+        <Card className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-ink/5 text-ink-muted">
+            <Lock size={18} />
+          </div>
+          <p className="text-sm font-medium text-ink">Esta sección está protegida.</p>
+          <p className="max-w-[320px] text-xs text-ink-muted">
+            Introduce la contraseña para editar las tarifas de disposición por horas.
+          </p>
+          <form onSubmit={handleUnlock} className="mt-1 flex w-full max-w-[260px] flex-col gap-2">
+            <input
+              type="password"
+              value={pwInput}
+              onChange={(e) => {
+                setPwInput(e.target.value)
+                setPwError(false)
+              }}
+              placeholder="Contraseña"
+              autoFocus
+              className={`rounded-xl border px-3 py-2.5 text-center text-sm outline-none transition ${
+                pwError ? 'border-rust focus:border-rust' : 'border-line focus:border-gold'
+              }`}
+            />
+            {pwError && <p className="text-xs font-medium text-rust">Contraseña incorrecta.</p>}
+            <button
+              type="submit"
+              className="rounded-xl bg-gold px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gold-600"
+            >
+              Desbloquear
+            </button>
+          </form>
         </Card>
       ) : (
         <Card className="overflow-hidden">

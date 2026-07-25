@@ -74,6 +74,39 @@ export default function TripRow({ trip, index, zones, vehicleClasses, onChange, 
         </select>
       </div>
 
+      <div className="mt-3 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
+        <label className="flex flex-1 items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={trip.hasExtraHour}
+            onChange={(e) => onChange({ hasExtraHour: e.target.checked })}
+            className="h-4 w-4 flex-none accent-gold"
+          />
+          ¿Hubo hora extra en este servicio?
+        </label>
+        {trip.hasExtraHour && (
+          <div className="flex flex-none items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onChange({ extraHours: Math.max(1, (trip.extraHours || 1) - 1) })}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold"
+              aria-label="Restar una hora extra"
+            >
+              −
+            </button>
+            <span className="w-6 text-center font-mono text-sm">{trip.extraHours || 1}</span>
+            <button
+              type="button"
+              onClick={() => onChange({ extraHours: (trip.extraHours || 1) + 1 })}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold"
+              aria-label="Sumar una hora extra"
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+
       {trip.result && (
         <div className="mt-3 rounded-lg bg-ink/[0.03] px-3 py-2 text-sm">
           {trip.result.ok ? (
@@ -84,6 +117,16 @@ export default function TripRow({ trip, index, zones, vehicleClasses, onChange, 
                   <span>{formatZoneFormula(trip.result)}</span>
                 </div>
               )}
+              {trip.hasExtraHour &&
+                (() => {
+                  const extraLeg = trip.result.legs.find((l) => l.label.includes('hora(s) extra'))
+                  return extraLeg ? (
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs text-ink-muted">
+                      <span>{extraLeg.label}</span>
+                      <span className="font-mono">{formatEUR(extraLeg.price)}</span>
+                    </div>
+                  ) : null
+                })()}
               <div className="flex items-center justify-between border-t border-line/70 pt-1.5">
                 <span className="text-ink-muted">Total trayecto (con IVA)</span>
                 <span className="font-mono font-semibold text-ink">{formatEUR(trip.result.total)}</span>

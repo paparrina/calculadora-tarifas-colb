@@ -3,7 +3,7 @@ import { Clock, Minus, Plus, Car } from 'lucide-react'
 import { Button, Spinner } from '../ui/Primitives'
 import VehicleClassSelector from './VehicleClassSelector'
 import ResultTicket from './ResultTicket'
-import { calculateDisposalPrice } from '../../lib/pricing'
+import { calculateDisposalPrice, getExtraHourRate, addExtraHourCharge } from '../../lib/pricing'
 
 const MIN_HOURS = 3
 const MAX_HOURS = 24
@@ -11,6 +11,8 @@ const MAX_HOURS = 24
 export default function DisposalCalculator({ vehicleClasses, disposalRateMap, vatRate }) {
   const [vehicleClassId, setVehicleClassId] = useState(vehicleClasses[0]?.id ?? null)
   const [hours, setHours] = useState(3)
+  const [hasExtraHour, setHasExtraHour] = useState(false)
+  const [extraHours, setExtraHours] = useState(1)
   const [calculating, setCalculating] = useState(false)
   const [result, setResult] = useState(null)
 
@@ -25,7 +27,9 @@ export default function DisposalCalculator({ vehicleClasses, disposalRateMap, va
     setCalculating(true)
     setResult(null)
     setTimeout(() => {
-      const r = calculateDisposalPrice({ vehicleClassId, hours, rateMap: disposalRateMap, vatRate })
+      const base = calculateDisposalPrice({ vehicleClassId, hours, rateMap: disposalRateMap, vatRate })
+      const extraRate = getExtraHourRate(disposalRateMap, vehicleClassId)
+      const r = hasExtraHour ? addExtraHourCharge(base, extraHours, extraRate, vatRate) : base
       setResult(r)
       setCalculating(false)
     }, 380)
@@ -78,6 +82,52 @@ export default function DisposalCalculator({ vehicleClasses, disposalRateMap, va
             setResult(null)
           }}
         />
+
+        <div className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
+          <label className="flex flex-1 items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={hasExtraHour}
+              onChange={(e) => {
+                setHasExtraHour(e.target.checked)
+                setResult(null)
+              }}
+              className="h-4 w-4 flex-none accent-gold"
+            />
+            ¿Hay alguna hora extra que facturar aparte?
+          </label>
+          {hasExtraHour && (
+            <div className="flex flex-none items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setExtraHours((n) => Math.max(1, n - 1))
+                  setResult(null)
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold"
+                aria-label="Restar una hora extra"
+              >
+                −
+              </button>
+              <span className="w-6 text-center font-mono text-sm">{extraHours}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setExtraHours((n) => n + 1)
+                  setResult(null)
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold"
+                aria-label="Sumar una hora extra"
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+        <p className="-mt-4 text-xs text-ink-muted">
+          Para horas extra ya incluidas al superar las 12h de disposición no hace falta marcar esto — ya se calculan
+          solas. Usa esta opción solo si hay que facturar alguna hora extra aparte del tiempo contratado.
+        </p>
 
         <Button variant="gold" className="w-full" disabled={!vehicleClassId || calculating} onClick={handleCalculate}>
           {calculating ? <Spinner size={16} className="text-white" /> : <Car size={16} />}
