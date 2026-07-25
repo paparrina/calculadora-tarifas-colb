@@ -1,147 +1,102 @@
 import { useState } from 'react'
-import { Clock, Minus, Plus, Car } from 'lucide-react'
+import { Plus, Car } from 'lucide-react'
 import { Button, Spinner } from '../ui/Primitives'
-import VehicleClassSelector from './VehicleClassSelector'
-import ResultTicket from './ResultTicket'
-import { calculateDisposalPrice, getExtraHourRate, addExtraHourCharge } from '../../lib/pricing'
+import DisposalServiceRow from './DisposalServiceRow'
+import MultiDisposalTicket from './MultiDisposalTicket'
+import { calculateDisposalPrice, getExtraHourRate, addExtraHourCharge, summarizeTrips } from '../../lib/pricing'
 
-const MIN_HOURS = 3
-const MAX_HOURS = 24
+let serviceCounter = 0
+function newServiceId() {
+  serviceCounter += 1
+  return `disp-${Date.now()}-${serviceCounter}`
+}
+
+function emptyService(defaultVehicleClassId) {
+  return {
+    id: newServiceId(),
+    hours: 3,
+    vehicleClassId: defaultVehicleClassId,
+    serviceRef: '',
+    hasExtraHour: false,
+    extraHours: 1,
+    result: null,
+  }
+}
 
 export default function DisposalCalculator({ vehicleClasses, disposalRateMap, vatRate }) {
-  const [vehicleClassId, setVehicleClassId] = useState(vehicleClasses[0]?.id ?? null)
-  const [hours, setHours] = useState(3)
-  const [hasExtraHour, setHasExtraHour] = useState(false)
-  const [extraHours, setExtraHours] = useState(1)
+  const defaultVehicleClassId = vehicleClasses[0]?.id ?? null
+  const [services, setServices] = useState(() => [emptyService(defaultVehicleClassId)])
   const [calculating, setCalculating] = useState(false)
-  const [result, setResult] = useState(null)
 
-  const vehicleClass = vehicleClasses.find((v) => v.id === vehicleClassId)
-
-  function updateHours(next) {
-    setHours(Math.min(MAX_HOURS, Math.max(MIN_HOURS, next)))
-    setResult(null)
+  function updateService(id, patch) {
+    setServices((rows) => rows.map((s) => (s.id === id ? { ...s, ...patch, result: null } : s)))
   }
 
-  function handleCalculate() {
+  function addService() {
+    const last = services[services.length - 1]
+    setServices((rows) => [...rows, emptyService(last?.vehicleClassId ?? defaultVehicleClassId)])
+  }
+
+  function removeService(id) {
+    setServices((rows) => rows.filter((s) => s.id !== id))
+  }
+
+  function handleCalculateAll() {
     setCalculating(true)
-    setResult(null)
     setTimeout(() => {
-      const base = calculateDisposalPrice({ vehicleClassId, hours, rateMap: disposalRateMap, vatRate })
-      const extraRate = getExtraHourRate(disposalRateMap, vehicleClassId)
-      const r = hasExtraHour ? addExtraHourCharge(base, extraHours, extraRate, vatRate) : base
-      setResult(r)
+      setServices((rows) =>
+        rows.map((s) => {
+          const base = calculateDisposalPrice({
+            vehicleClassId: s.vehicleClassId,
+            hours: s.hours,
+            rateMap: disposalRateMap,
+            vatRate,
+          })
+          const extraRate = getExtraHourRate(disposalRateMap, s.vehicleClassId)
+          const result = s.hasExtraHour ? addExtraHourCharge(base, s.extraHours, extraRate, vatRate) : base
+          return { ...s, result }
+        })
+      )
       setCalculating(false)
     }, 380)
   }
 
+  const summary = summarizeTrips(
+    services.map((s) => s.result),
+    vatRate
+  )
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-      <div className="min-w-0 space-y-6">
-        <div>
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Duración del servicio
-          </span>
-          <div className="flex items-center gap-4 rounded-xl border border-line bg-surface px-5 py-4">
-            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-ink/5 text-ink-muted">
-              <Clock size={16} />
-            </span>
-            <button
-              type="button"
-              onClick={() => updateHours(hours - 1)}
-              disabled={hours <= MIN_HOURS}
-              aria-label="Restar una hora"
-              className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold disabled:opacity-30"
-            >
-              <Minus size={14} />
-            </button>
-            <div className="flex-1 text-center">
-              <span className="font-mono text-2xl font-semibold text-ink">{hours}</span>
-              <span className="ml-1 text-sm text-ink-muted">horas</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => updateHours(hours + 1)}
-              disabled={hours >= MAX_HOURS}
-              aria-label="Sumar una hora"
-              className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold disabled:opacity-30"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-ink-muted">
-            Disposición mínima de 3 horas. A partir de la hora 12 se aplica el precio de hora extra.
-          </p>
-        </div>
+      <div className="min-w-0 space-y-4">
+        {services.map((service, i) => (
+          <DisposalServiceRow
+            key={service.id}
+            service={service}
+            index={i}
+            vehicleClasses={vehicleClasses}
+            canRemove={services.length > 1}
+            onChange={(patch) => updateService(service.id, patch)}
+            onRemove={() => removeService(service.id)}
+          />
+        ))}
 
-        <VehicleClassSelector
-          vehicleClasses={vehicleClasses}
-          value={vehicleClassId}
-          onChange={(id) => {
-            setVehicleClassId(id)
-            setResult(null)
-          }}
-        />
+        <button
+          type="button"
+          onClick={addService}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-ink-muted transition hover:border-gold hover:text-gold"
+        >
+          <Plus size={16} />
+          Añadir servicio
+        </button>
 
-        <div className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
-          <label className="flex flex-1 items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={hasExtraHour}
-              onChange={(e) => {
-                setHasExtraHour(e.target.checked)
-                setResult(null)
-              }}
-              className="h-4 w-4 flex-none accent-gold"
-            />
-            ¿Hay alguna hora extra que facturar aparte?
-          </label>
-          {hasExtraHour && (
-            <div className="flex flex-none items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setExtraHours((n) => Math.max(1, n - 1))
-                  setResult(null)
-                }}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold"
-                aria-label="Restar una hora extra"
-              >
-                −
-              </button>
-              <span className="w-6 text-center font-mono text-sm">{extraHours}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setExtraHours((n) => n + 1)
-                  setResult(null)
-                }}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink transition hover:border-gold hover:text-gold"
-                aria-label="Sumar una hora extra"
-              >
-                +
-              </button>
-            </div>
-          )}
-        </div>
-        <p className="-mt-4 text-xs text-ink-muted">
-          Para horas extra ya incluidas al superar las 12h de disposición no hace falta marcar esto — ya se calculan
-          solas. Usa esta opción solo si hay que facturar alguna hora extra aparte del tiempo contratado.
-        </p>
-
-        <Button variant="gold" className="w-full" disabled={!vehicleClassId || calculating} onClick={handleCalculate}>
+        <Button variant="gold" className="w-full" disabled={calculating} onClick={handleCalculateAll}>
           {calculating ? <Spinner size={16} className="text-white" /> : <Car size={16} />}
-          {calculating ? 'Calculando…' : 'Calcular tarifa'}
+          {calculating ? 'Calculando…' : services.length > 1 ? 'Calcular todos' : 'Calcular tarifa'}
         </Button>
       </div>
 
-      <ResultTicket
-        title={`Disposición · ${hours} horas`}
-        subtitle="Servicio de chófer por horas"
-        vehicleClassName={vehicleClass?.name}
-        result={result}
-        emptyHint="Elige la duración y la clase de vehículo para ver el presupuesto con IVA desglosado."
-      />
+      <MultiDisposalTicket services={services} summary={summary} />
     </div>
   )
 }

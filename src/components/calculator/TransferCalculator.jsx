@@ -94,7 +94,7 @@ export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap,
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line px-4 py-3 text-sm font-semibold text-ink-muted transition hover:border-gold hover:text-gold"
         >
           <Plus size={16} />
-          Añadir trayecto
+          Añadir servicio
         </button>
 
         <Button variant="gold" className="w-full" disabled={!canCalculate || calculating} onClick={handleCalculateAll}>

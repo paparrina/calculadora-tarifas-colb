@@ -70,7 +70,7 @@ transfer-calculator/
 │   │   └── useAdminRates.js      # Carga/edita datos para el panel de gestión
 │   ├── components/
 │   │   ├── ui/            # Combobox, Button, Card, Tabs…
-│   │   ├── calculator/    # TransferCalculator (multi-trayecto), TripRow, MultiTripTicket, DisposalCalculator, ResultTicket
+│   │   ├── calculator/    # TransferCalculator/TripRow/MultiTripTicket y DisposalCalculator/DisposalServiceRow/MultiDisposalTicket (ambos multi-servicio)
 │   │   ├── admin/         # RatesAdmin, EditablePrice
 │   │   └── layout/        # Header, Footer
 │   ├── App.jsx
@@ -150,12 +150,13 @@ npm run build   # genera la carpeta dist/
 npm run preview # sirve el build localmente para comprobarlo
 ```
 
-**Varios trayectos a la vez:** la pestaña Traslado permite añadir varias
-filas de trayecto (botón "+ Añadir trayecto"), cada una con su propia zona
-de origen/destino y clase de vehículo. "Calcular todos" computa cada fila
-por separado con `calculateZonePrice` y las combina con `summarizeTrips`
-en un único presupuesto — el IVA se aplica una sola vez sobre la suma de
-todos los subtotales, como una factura con varias líneas.
+**Varios servicios a la vez:** tanto la pestaña Traslado como Disposición por
+horas permiten añadir varias filas de servicio (botón "+ Añadir servicio"),
+cada una con sus propios datos (zonas o duración, clase de vehículo, número
+de servicio/colaborador y hora extra opcional). "Calcular todos" computa
+cada fila por separado y las combina con `summarizeTrips` en un único
+presupuesto — el IVA se aplica una sola vez sobre la suma de todos los
+subtotales, como una factura con varias líneas.
 
 **Copiar / exportar presupuesto:** `src/lib/exportQuote.js` intenta primero
 la Clipboard API / `window.print()` nativos; si el navegador los bloquea
