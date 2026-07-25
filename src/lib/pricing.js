@@ -214,11 +214,18 @@ export function formatEUR(value) {
  * calculateZonePrice, con los números reales — p. ej.
  * "160,00 € + 160,00 € ÷ 2 = 240,00 €" — para mostrar la norma de
  * cálculo, no solo el resultado ya hecho.
+ *
+ * Importante: el resultado de la ecuación se recalcula aquí mismo
+ * (higher + lower÷2), NO se usa result.priceBase — porque priceBase
+ * puede incluir cargos añadidos después (p. ej. horas extra vía
+ * addExtraHourCharge), y entonces la ecuación mostrada no cuadraría
+ * con sus propios números.
  */
 export function formatZoneFormula(result) {
   if (!result?.ok || !result.formula) return null
   const { higher, lower } = result.formula
-  return `${formatEUR(higher)} + ${formatEUR(lower)} ÷ 2 = ${formatEUR(result.priceBase)}`
+  const zoneSubtotal = round2(higher + lower * 0.5)
+  return `${formatEUR(higher)} + ${formatEUR(lower)} ÷ 2 = ${formatEUR(zoneSubtotal)}`
 }
 
 export { round2 }
