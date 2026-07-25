@@ -174,14 +174,15 @@ definida en `disposal_rates`. En Disposición es independiente del cálculo
 automático de horas extra al superar las 12h: sirve para horas extra que se
 facturan aparte del tiempo ya contratado.
 
-**Panel de Gestión protegido con contraseña:** la pestaña "Disposición por
-horas" del panel de administración pide una contraseña (`2026` por defecto,
-editable en `RatesAdmin.jsx` — constante `DISPOSAL_EDIT_PASSWORD`) antes de
-mostrar la tabla editable. Importante: es una protección solo de interfaz,
-no de seguridad real — cualquiera con acceso al código fuente del navegador
-puede ver la contraseña. La seguridad real de escritura la sigue dando la
-política RLS de Supabase (`auth.role() = 'authenticated'`); este candado es
-únicamente para evitar cambios accidentales de alguien sin la contraseña.
+**Panel de Gestión protegido con contraseña:** al entrar en la pestaña
+"Gestión" (Zonas y Disposición por horas, todo junto) se pide una
+contraseña (`2026` por defecto, editable en `RatesAdmin.jsx` — constante
+`ADMIN_PASSWORD`) antes de mostrar nada editable. Importante: es una
+protección solo de interfaz, no de seguridad real — cualquiera con acceso
+al código fuente del navegador puede ver la contraseña. La seguridad real
+de escritura la sigue dando la política RLS de Supabase
+(`auth.role() = 'authenticated'`); este candado es únicamente para evitar
+cambios accidentales de alguien sin la contraseña.
 
 ---
 
