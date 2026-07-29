@@ -24,7 +24,15 @@ function emptyTrip(defaultVehicleClassId) {
   }
 }
 
-export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap, disposalRateMap, vatRate }) {
+function toZoneRef(location) {
+  if (!location) return null
+  // El precio se busca por zone_id (location.zone_id), pero el nombre
+  // que se muestra es el de la localidad concreta que ha buscado el
+  // usuario (ej. "Deià"), no el nombre genérico de la zona.
+  return { id: location.zone_id, name: location.name, zone_number: location.zone_number, is_airport: location.is_airport }
+}
+
+export default function TransferCalculator({ locations, vehicleClasses, zoneRateMap, disposalRateMap, vatRate }) {
   const defaultVehicleClassId = vehicleClasses[0]?.id ?? null
   const [trips, setTrips] = useState(() => [emptyTrip(defaultVehicleClassId)])
   const [calculating, setCalculating] = useState(false)
@@ -52,8 +60,8 @@ export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap,
       setTrips((rows) =>
         rows.map((t) => {
           const base = calculateZonePrice({
-            zoneA: t.origin,
-            zoneB: t.destination,
+            zoneA: toZoneRef(t.origin),
+            zoneB: toZoneRef(t.destination),
             vehicleClassId: t.vehicleClassId,
             rateMap: zoneRateMap,
             vatRate,
@@ -80,7 +88,7 @@ export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap,
             key={trip.id}
             trip={trip}
             index={i}
-            zones={zones}
+            locations={locations}
             vehicleClasses={vehicleClasses}
             canRemove={trips.length > 1}
             onChange={(patch) => updateTrip(trip.id, patch)}
@@ -102,7 +110,7 @@ export default function TransferCalculator({ zones, vehicleClasses, zoneRateMap,
           {calculating ? 'Calculando…' : trips.length > 1 ? 'Calcular todos' : 'Calcular tarifa'}
         </Button>
         {!canCalculate && (
-          <p className="text-xs text-ink-muted">Completa zona de origen, destino y vehículo en todos los trayectos.</p>
+          <p className="text-xs text-ink-muted">Completa origen, destino y vehículo en todos los trayectos.</p>
         )}
       </div>
 

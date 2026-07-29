@@ -16,6 +16,10 @@ Uso:
     python3 scripts/generate_seed.py
 """
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from locations_data import LOCATIONS
 
 # (zone_number, name, example_locations, price_E, price_S, price_V, is_airport)
 ZONES = [
@@ -74,6 +78,25 @@ on conflict (code) do nothing;
             vals.append(f"  ({zn}, '{esc(name)}', '{esc(examples)}', {'true' if is_airport else 'false'})")
         f.write(",\n".join(vals))
         f.write("\non conflict (zone_number) do update set name = excluded.name, example_locations = excluded.example_locations, is_airport = excluded.is_airport;\n\n")
+
+        f.write("-- 2.1 Localidades reales del tarifario (231, extraídas del PDF y verificadas)\n")
+        f.write("--     + el propio Aeropuerto, para poder buscarlo por nombre igual que el resto.\n")
+        f.write("""with zn as (
+  select id, zone_number from public.zones
+)
+insert into public.locations (name, zone_id)
+select v.name, zn.id
+from (values\n""")
+        vals = ["  ('Aeropuerto de Palma (PMI)', 0)"]
+        for name, zone_number in LOCATIONS:
+            vals.append(f"  ('{esc(name)}', {zone_number})")
+        f.write(",\n".join(vals))
+        f.write("""
+) as v(name, zone_number)
+join zn on zn.zone_number = v.zone_number
+on conflict (name) do update set zone_id = excluded.zone_id;
+
+""")
 
         f.write("-- 3. Tarifa base por zona y clase de vehículo (SIN IVA)\n")
         f.write("""with cls as (

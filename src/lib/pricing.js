@@ -71,20 +71,20 @@ export function addExtraHourCharge(result, extraHours, extraHourRate, vatRate) {
 /**
  * Calcula el precio de un TRASLADO entre dos ZONAS.
  *
- * Modelo de zonas numéricas: la Zona 0 es el Aeropuerto y tiene su
- * propio precio base real, exactamente igual que cualquier otra zona
- * (1, 2, 3…) — no hay ningún valor especial ni de referencia.
+ * Los precios del tarifario ya SON tarifas directas Aeropuerto⇄Zona
+ * (así están definidos en el documento de proveedores). Por eso:
  *
- * Una única fórmula, sin excepciones — ni para la Zona 0, ni para el
- * caso en que origen y destino sean la MISMA zona:
+ *  1. Si el Aeropuerto (Zona 0) es una de las dos zonas: el precio es
+ *     directo, el que ya está fijado para la otra zona — no se aplica
+ *     ninguna fórmula, "el precio es el que es".
  *
- *        Precio Base = tramo_más_caro + 50% · tramo_más_barato
+ *  2. Si NINGUNA de las dos es el Aeropuerto (trayecto punto a punto
+ *     entre dos zonas "de tierra", que no está tarifado directamente
+ *     en el documento): se aplica la fórmula de aproximación
  *
- * donde cada "tramo" es el precio base de cada zona implicada. Si
- * origen y destino son la misma zona, ambos tramos valen lo mismo, así
- * que la propia fórmula da automáticamente 1,5× esa tarifa (el tramo
- * completo + el 50% del otro tramo, que es idéntico) — no hace falta
- * ninguna regla aparte, es la misma fórmula general aplicada tal cual.
+ *         Precio Base = tramo_más_caro + 50% · tramo_más_barato
+ *
+ *     donde cada "tramo" es el precio Aeropuerto⇄esa zona.
  *
  * @param {Object} params
  * @param {Object} params.zoneA        - zona de origen {id, name, zone_number, is_airport}
@@ -110,6 +110,15 @@ export function calculateZonePrice({ zoneA, zoneB, vehicleClassId, rateMap, vatR
 
   const zoneLabel = (z) => `Zona ${z.zone_number} · ${z.name}`
 
+  // Caso 1: el Aeropuerto es una de las dos zonas -> precio directo.
+  if (zoneA.is_airport || zoneB.is_airport) {
+    const otherZone = zoneA.is_airport ? zoneB : zoneA
+    const directPrice = zoneA.is_airport ? priceB : priceA
+    const legs = [{ label: `Aeropuerto ⇄ ${otherZone.name}`, price: directPrice }]
+    return buildResult({ priceBase: directPrice, vatRate, mode: 'direct', legs, formula: null })
+  }
+
+  // Caso 2: ninguna es el Aeropuerto -> fórmula entre las dos zonas.
   const higher = Math.max(priceA, priceB)
   const lower = Math.min(priceA, priceB)
   const priceBase = higher + lower * 0.5

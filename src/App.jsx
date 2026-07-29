@@ -49,7 +49,7 @@ export default function App() {
             <Card className="p-5 sm:p-7">
               {mode === 'transfer' ? (
                 <TransferCalculator
-                  zones={data.zones}
+                  locations={data.locations}
                   vehicleClasses={data.vehicleClasses}
                   zoneRateMap={data.zoneRateMap}
                   disposalRateMap={data.disposalRateMap}

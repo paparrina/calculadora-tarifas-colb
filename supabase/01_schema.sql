@@ -62,6 +62,25 @@ create unique index if not exists idx_zones_single_airport
 comment on table public.zones is 'Zonas tarifarias. zone_number = 0 identifica siempre al Aeropuerto: es una zona más, con su propio precio real en zone_rates (no un valor especial).';
 
 -- ------------------------------------------------------------
+-- 2.1 Localidades — nombres reales del tarifario, cada una apuntando
+--     a su zona. Es una tabla de REFERENCIA para poder buscar por
+--     nombre de localidad (ej. "Deià") en vez de por número de zona;
+--     el precio siempre sale de zone_rates a través de zone_id, esta
+--     tabla no guarda ningún precio propio.
+-- ------------------------------------------------------------
+create table if not exists public.locations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  zone_id uuid not null references public.zones(id) on delete cascade,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_locations_zone on public.locations (zone_id);
+
+comment on table public.locations is 'Localidades reales del tarifario (ej. "Deià", "Sóller"...), cada una vinculada a su zona. Solo para búsqueda por nombre; el precio se calcula siempre a través de zone_id -> zone_rates.';
+
+-- ------------------------------------------------------------
 -- 3. Tarifa base de cada zona, por clase de vehículo (SIN IVA).
 --    Cada zona —incluida la Zona 0 (Aeropuerto)— tiene su propio
 --    precio real; no hay ningún valor especial ni bloqueado.
@@ -135,10 +154,11 @@ order by z.zone_number, vc.display_order;
 -- ------------------------------------------------------------
 -- Encapsula la fórmula de negocio en la base de datos, por si se
 -- quiere calcular el precio desde SQL/RPC además de en el frontend.
--- Una única fórmula, sin excepciones — ni para la Zona 0, ni cuando
--- origen y destino son la misma zona (en ese caso los dos tramos
--- valen lo mismo, y la fórmula da automáticamente 1,5× esa tarifa):
---   precio_base = tramo_mas_caro + 50% * tramo_mas_barato
+-- Los precios del tarifario YA SON tarifas directas Aeropuerto⇄Zona,
+-- así que:
+--   - Si una de las dos zonas es el Aeropuerto (Zona 0): precio
+--     directo, el que ya está fijado para la otra zona.
+--   - Si ninguna es el Aeropuerto: tramo_mas_caro + 50% * tramo_mas_barato.
 create or replace function public.calculate_zone_price(
   p_zone_a uuid,
   p_zone_b uuid,
@@ -151,23 +171,31 @@ create or replace function public.calculate_zone_price(
 declare
   v_price_a numeric;
   v_price_b numeric;
+  v_airport_a boolean;
+  v_airport_b boolean;
   v_higher numeric;
   v_lower numeric;
   v_base numeric;
   v_vat_rate numeric;
 begin
-  select zr.price_base into v_price_a from public.zone_rates zr
+  select zr.price_base, z.is_airport into v_price_a, v_airport_a
+    from public.zone_rates zr join public.zones z on z.id = zr.zone_id
     where zr.zone_id = p_zone_a and zr.vehicle_class_id = p_vehicle_class;
-  select zr.price_base into v_price_b from public.zone_rates zr
+  select zr.price_base, z.is_airport into v_price_b, v_airport_b
+    from public.zone_rates zr join public.zones z on z.id = zr.zone_id
     where zr.zone_id = p_zone_b and zr.vehicle_class_id = p_vehicle_class;
 
   if v_price_a is null or v_price_b is null then
     raise exception 'No existe tarifa registrada para una de las zonas y esa clase de vehículo';
   end if;
 
-  v_higher := greatest(v_price_a, v_price_b);
-  v_lower := least(v_price_a, v_price_b);
-  v_base := round(v_higher + (v_lower * 0.5), 2);
+  if v_airport_a or v_airport_b then
+    v_base := case when v_airport_a then v_price_b else v_price_a end;
+  else
+    v_higher := greatest(v_price_a, v_price_b);
+    v_lower := least(v_price_a, v_price_b);
+    v_base := round(v_higher + (v_lower * 0.5), 2);
+  end if;
 
   select s.vat_rate into v_vat_rate from public.app_settings s where s.id = 1;
 
@@ -178,7 +206,7 @@ begin
 end;
 $$;
 
-comment on function public.calculate_zone_price is 'Aplica "tramo más caro + 50% del tramo más barato" entre dos zonas cualesquiera, sin ninguna excepción — Zona 0 incluida, y también cuando origen y destino son la misma zona (da 1,5× su tarifa, sin necesidad de una regla aparte).';
+comment on function public.calculate_zone_price is 'Precio directo (el de la otra zona) cuando el Aeropuerto (Zona 0) es una de las dos zonas; fórmula "tramo más caro + 50% del tramo más barato" solo cuando ninguna de las dos es el Aeropuerto.';
 
 -- ------------------------------------------------------------
 -- 8. Row Level Security (RLS)
@@ -190,19 +218,37 @@ comment on function public.calculate_zone_price is 'Aplica "tramo más caro + 50
 
 alter table public.vehicle_classes enable row level security;
 alter table public.zones           enable row level security;
+alter table public.locations       enable row level security;
 alter table public.zone_rates      enable row level security;
 alter table public.disposal_rates  enable row level security;
 alter table public.app_settings    enable row level security;
 
+drop policy if exists "Lectura pública" on public.vehicle_classes;
+drop policy if exists "Lectura pública" on public.zones;
+drop policy if exists "Lectura pública" on public.locations;
+drop policy if exists "Lectura pública" on public.zone_rates;
+drop policy if exists "Lectura pública" on public.disposal_rates;
+drop policy if exists "Lectura pública" on public.app_settings;
+
 create policy "Lectura pública" on public.vehicle_classes for select using (true);
 create policy "Lectura pública" on public.zones             for select using (true);
+create policy "Lectura pública" on public.locations         for select using (true);
 create policy "Lectura pública" on public.zone_rates        for select using (true);
 create policy "Lectura pública" on public.disposal_rates    for select using (true);
 create policy "Lectura pública" on public.app_settings       for select using (true);
 
+drop policy if exists "Escritura autenticados" on public.vehicle_classes;
+drop policy if exists "Escritura autenticados" on public.zones;
+drop policy if exists "Escritura autenticados" on public.locations;
+drop policy if exists "Escritura autenticados" on public.zone_rates;
+drop policy if exists "Escritura autenticados" on public.disposal_rates;
+drop policy if exists "Escritura autenticados" on public.app_settings;
+
 create policy "Escritura autenticados" on public.vehicle_classes
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "Escritura autenticados" on public.zones
+  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Escritura autenticados" on public.locations
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "Escritura autenticados" on public.zone_rates
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');

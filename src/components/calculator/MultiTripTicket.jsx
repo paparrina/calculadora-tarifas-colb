@@ -29,8 +29,8 @@ export default function MultiTripTicket({ trips, summary, companyName = 'Transfe
   }
 
   const rowLabel = (trip, i) => {
-    const o = trip.origin ? `Zona ${trip.origin.zone_number}` : '?'
-    const d = trip.destination ? `Zona ${trip.destination.zone_number}` : '?'
+    const o = trip.origin ? trip.origin.name : '?'
+    const d = trip.destination ? trip.destination.name : '?'
     const ref = trip.serviceRef?.trim() ? ` (Ref: ${trip.serviceRef.trim()})` : ''
     return `Trayecto ${i + 1}${ref}: ${o} → ${d}`
   }

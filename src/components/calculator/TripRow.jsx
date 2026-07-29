@@ -8,7 +8,7 @@ import { formatEUR, formatZoneFormula } from '../../lib/pricing'
  * de ESE trayecto en cuanto se calcula. Se repite tantas veces como
  * trayectos tenga el presupuesto (botón "+ Añadir trayecto").
  */
-export default function TripRow({ trip, index, zones, vehicleClasses, onChange, onRemove, canRemove }) {
+export default function TripRow({ trip, index, locations, vehicleClasses, onChange, onRemove, canRemove }) {
   function handleSwap() {
     onChange({ origin: trip.destination, destination: trip.origin })
   }
@@ -44,12 +44,12 @@ export default function TripRow({ trip, index, zones, vehicleClasses, onChange, 
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end">
         <Combobox
-          label="Zona de origen"
+          label="Origen"
           icon="plane"
-          options={zones}
+          options={locations}
           value={trip.origin}
           onChange={(v) => onChange({ origin: v })}
-          placeholder="Zona 0 · Aeropuerto, Zona 1…"
+          placeholder="Aeropuerto, Deià…"
         />
         <button
           type="button"
@@ -61,12 +61,12 @@ export default function TripRow({ trip, index, zones, vehicleClasses, onChange, 
           <ArrowLeftRight size={16} />
         </button>
         <Combobox
-          label="Zona de destino"
+          label="Destino"
           icon="pin"
-          options={zones}
+          options={locations}
           value={trip.destination}
           onChange={(v) => onChange({ destination: v })}
-          placeholder="Zona 0 · Aeropuerto, Zona 1…"
+          placeholder="Aeropuerto, Deià…"
         />
       </div>
 

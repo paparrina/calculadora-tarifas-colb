@@ -2,12 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ChevronsUpDown, Search, X, MapPin, Plane } from 'lucide-react'
 
 /**
- * Combobox / Select con búsqueda predictiva para elegir una ZONA de
- * origen o destino (la Zona 0 es siempre el Aeropuerto).
+ * Combobox / Select con búsqueda predictiva para elegir una LOCALIDAD
+ * de origen o destino por su nombre real (ej. "Deià", "Sóller"...).
+ * Cada localidad lleva su zona vinculada (usada para el precio); la
+ * Zona 0 es siempre el Aeropuerto.
  *
  * Componente accesible y ligero (sin dependencias externas). Soporta:
- *  - Filtrado en vivo por nombre de zona, número de zona y localidades
- *    de ejemplo incluidas en cada zona.
+ *  - Filtrado en vivo por nombre de localidad o número de zona.
  *  - Navegación con teclado (flechas, Enter, Escape).
  *  - Excluir una opción concreta (para evitar origen == destino).
  */
@@ -18,7 +19,7 @@ export default function Combobox({
   value,
   onChange,
   excludeId,
-  placeholder = 'Buscar zona…',
+  placeholder = 'Buscar localidad…',
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -31,12 +32,7 @@ export default function Combobox({
     const q = query.trim().toLowerCase()
     const base = options.filter((o) => o.id !== excludeId)
     if (!q) return base
-    return base.filter(
-      (o) =>
-        o.name.toLowerCase().includes(q) ||
-        `zona ${o.zone_number}`.includes(q) ||
-        (o.example_locations || '').toLowerCase().includes(q)
-    )
+    return base.filter((o) => o.name.toLowerCase().includes(q) || `zona ${o.zone_number}`.includes(q))
   }, [options, query, excludeId])
 
   useEffect(() => {
@@ -113,10 +109,10 @@ export default function Combobox({
         <span className="min-w-0 flex-1">
           {value ? (
             <>
-              <span className="block truncate font-medium text-ink">
-                Zona {value.zone_number} · {value.name}
+              <span className="block truncate font-medium text-ink">{value.name}</span>
+              <span className="block truncate text-xs text-ink-muted">
+                {value.is_airport ? 'Punto de referencia' : `Zona ${value.zone_number} · ${value.zone_name}`}
               </span>
-              <span className="block truncate text-xs text-ink-muted">{value.example_locations || value.name}</span>
             </>
           ) : (
             <span className="text-ink-muted">{placeholder}</span>
@@ -134,7 +130,7 @@ export default function Combobox({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Escribe una zona o una localidad…"
+              placeholder="Escribe el nombre de una localidad…"
               className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
             />
             {query && (
@@ -146,7 +142,7 @@ export default function Combobox({
 
           <ul id={listId} role="listbox" className="max-h-72 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-ink-muted">No se ha encontrado ninguna zona.</li>
+              <li className="px-4 py-6 text-center text-sm text-ink-muted">No se ha encontrado ninguna localidad.</li>
             )}
             {filtered.map((opt, idx) => (
               <li
@@ -155,21 +151,18 @@ export default function Combobox({
                 aria-selected={value?.id === opt.id}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => selectOption(opt)}
-                className={`flex cursor-pointer items-start justify-between gap-3 px-4 py-2.5 text-sm transition ${
+                className={`flex cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-sm transition ${
                   idx === activeIndex ? 'bg-gold-50' : ''
                 } ${value?.id === opt.id ? 'font-semibold text-pine' : 'text-ink'}`}
               >
-                <span className="min-w-0">
-                  <span className="block truncate">
-                    Zona {opt.zone_number} · {opt.name}
+                <span className="truncate">{opt.name}</span>
+                {opt.is_airport ? (
+                  <span className="flex-none rounded-full bg-pine/10 px-2 py-0.5 text-[11px] text-pine">PMI</span>
+                ) : (
+                  <span className="flex-none rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[11px] text-ink-muted">
+                    Zona {opt.zone_number}
                   </span>
-                  {opt.example_locations && (
-                    <span className="block truncate text-xs font-normal text-ink-muted">{opt.example_locations}</span>
-                  )}
-                </span>
-                <span className="flex-none rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[11px] text-ink-muted">
-                  {opt.zone_number}
-                </span>
+                )}
               </li>
             ))}
           </ul>
